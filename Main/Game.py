@@ -11,7 +11,7 @@ class Game:
 
     def addPlayer(self, player):
         self.arrayOfPlayers.append(player)
-        self.scores[player] = 0
+        self.scores[player.name] = 0
 
     def incRound(self):
         self.round += 1
