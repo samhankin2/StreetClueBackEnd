@@ -10,6 +10,10 @@ from Game import Game
 app = Flask(__name__)
 
 # TODO Make sure the names are unique
+# TODO IF YOU GO BACK IT WILL DELETE THE GAME
+# TODO If you go back from waiting room removes you from the list
+# TODO CHANGE HOW LOCATIONS COME BACK
+# TODO LOCATIONS NEEDS A REAL LOOK AT WHEN THE DATABASE HAS FINSIHED BE CAREFUL
 
 
 channels_client = pusher.Pusher(
@@ -20,13 +24,18 @@ channels_client = pusher.Pusher(
     ssl=True
 )
 
+locations = [[-37.2236053, 145.929006],
+             [-42.7111515, 146.8972924],
+             [41.2779077, 146.036284],
+             [-44.5667837, 170.198597],
+             [-38.6770894, 176.07472470]]
 
 takenPins = []
-locations = ["-37.2236053,145.929006",
-             "-42.7111515,146.8972924",
-             "41.2779077,146.036284",
-             "-44.5667837,170.198597",
-             "-38.6770894,176.07472470"]
+# locations = ["-37.2236053,145.929006",
+#              "-42.7111515,146.8972924",
+#              "41.2779077,146.036284",
+#              "-44.5667837,170.198597",
+#              "-38.6770894,176.07472470"]
 games = {}
 
 
@@ -77,17 +86,7 @@ def debug():
 
     return "hi!"
 
-
-@app.route('/start_game', methods=['POST'])
-def start_game():
-    body = request.json
-    pin = body["pin"]
-
-    games[pin].startGame()
-
-    response = {"msg": "started game sucessfully", "pin": pin}
-    json = jsonify(response)
-    return json
+    return " hi "
 
 
 @app.route('/add_player', methods=['POST'])
@@ -100,10 +99,10 @@ def add_player():
     if pin in games:
         games[pin].addPlayer(newPlayer)
         channels_client.trigger(str(pin), 'playerJoin', {
-                                'message': playername + " Has Joined"})
+                                'message': playername + " Has Joined", "name": playername})
 
         response = {"msg": "Added "+playername+" Successfully",
-                    "locations": games[pin].randomLocations}
+                    "locations": games[pin].randomLocations[0]}
         json = jsonify(response)
         return json, 201
     else:
@@ -112,13 +111,33 @@ def add_player():
         return json, 404
 
 
+@app.route('/start_game', methods=['POST'])
+def start_game():
+    body = request.json
+
+    pin = body["pin"]
+
+    if pin in games:
+        games[pin].startGame()
+        channels_client.trigger(str(pin), 'startGame', {
+                                'message': 'game ' + pin + ' has started'})
+        response = {"msg": "started game sucessfully", "pin": pin}
+        json = jsonify(response)
+        return json
+
+    else:
+        response = {"msg": pin + " Doesnt Exists"}
+        json = jsonify(response)
+        return json, 404
+
+
 @app.route('/update_score', methods=['POST'])
 def update_score():
+    # TODO need to sort out the pusher here.. deffo tomoz job`
     body = request.json
     playername = body["name"]
     pin = body["pin"]
     score = body["score"]
-    print(takenPins)
 
     if pin in games:
         games[pin].updateScores(playername, score)
@@ -130,12 +149,16 @@ def update_score():
                 takenPins.remove(pin)
                 return "End Game"
             else:
+
                 response = {"msg": "End of Round",
-                            "scores": games[pin].scores}
+                            "scores": games[pin].scores, "nextRound": games[pin].round, "locations": games[pin].randomLocations[games[pin].round]}
                 json = jsonify(response)
                 return json, 200
         else:
-            return "updated score"
+            response = {"msg": "Answer Submitted",
+                        "scores": games[pin].scores, "nextRound": games[pin].round+1, "locations": games[pin].randomLocations[games[pin].round+1]}
+            json = jsonify(response)
+            return json, 200
 
     else:
         response = {"msg": pin + " Doesnt Exists"}
@@ -143,10 +166,26 @@ def update_score():
         return json, 404
 
 
-# @app.route('/next_round', methods=['POST'])
-# def next_round():
-#     # pin = body["pin"]
-#     # for
+@app.route('/get_players', methods=['POST'])
+def get_players():
+    body = request.json
+    pin = body["pin"]
+    x = games[pin].scores.keys()
+
+    print(x)
+    if pin in games:
+        names = []
+        for player in games[pin].arrayOfPlayers:
+            names.append(player.name)
+
+        response = {
+            "players": names}
+        json = jsonify(response)
+        return json, 200
+    else:
+        response = {"msg": pin + " Doesnt Exists"}
+        json = jsonify(response)
+        return json, 404
 
 
 def generatePin():
