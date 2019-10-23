@@ -12,8 +12,8 @@ app = Flask(__name__)
 # TODO Make sure the names are unique
 # TODO IF YOU GO BACK IT WILL DELETE THE GAME
 # TODO If you go back from waiting room removes you from the list
-# TODO CHANGE HOW LOCATIONS COME BACK
 # TODO LOCATIONS NEEDS A REAL LOOK AT WHEN THE DATABASE HAS FINSIHED BE CAREFUL
+# TODO End of game response needs to be fixed
 
 
 channels_client = pusher.Pusher(
@@ -26,7 +26,7 @@ channels_client = pusher.Pusher(
 
 locations = [[-37.2236053, 145.929006],
              [-42.7111515, 146.8972924],
-             [41.2779077, 146.036284],
+             [51.5024273, -0.139319],
              [-44.5667837, 170.198597],
              [-38.6770894, 176.07472470]]
 
@@ -37,6 +37,18 @@ takenPins = []
 #              "-44.5667837,170.198597",
 #              "-38.6770894,176.07472470"]
 games = {}
+
+
+@app.route("/next_round", methods=['POST'])
+def next_round():
+
+    body = request.json
+    pin = body["pin"]
+
+    channels_client.trigger(str(pin), 'nextRound', {
+        'message': pin + "next round started"})
+
+    return "worked"
 
 
 @app.route('/create_game', methods=['GET'])
