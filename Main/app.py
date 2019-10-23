@@ -13,6 +13,7 @@ app = Flask(__name__)
 # TODO IF YOU GO BACK IT WILL DELETE THE GAME
 # TODO If you go back from waiting room removes you from the list
 # TODO CHANGE HOW LOCATIONS COME BACK
+# TODO LOCATIONS NEEDS A REAL LOOK AT WHEN THE DATABASE HAS FINSIHED BE CAREFUL
 
 
 channels_client = pusher.Pusher(
@@ -23,13 +24,18 @@ channels_client = pusher.Pusher(
     ssl=True
 )
 
+locations = [[-37.2236053, 145.929006],
+             [-42.7111515, 146.8972924],
+             [41.2779077, 146.036284],
+             [-44.5667837, 170.198597],
+             [-38.6770894, 176.07472470]]
 
 takenPins = []
-locations = ["-37.2236053,145.929006",
-             "-42.7111515,146.8972924",
-             "41.2779077,146.036284",
-             "-44.5667837,170.198597",
-             "-38.6770894,176.07472470"]
+# locations = ["-37.2236053,145.929006",
+#              "-42.7111515,146.8972924",
+#              "41.2779077,146.036284",
+#              "-44.5667837,170.198597",
+#              "-38.6770894,176.07472470"]
 games = {}
 
 
@@ -96,7 +102,7 @@ def add_player():
                                 'message': playername + " Has Joined", "name": playername})
 
         response = {"msg": "Added "+playername+" Successfully",
-                    "locations": games[pin].randomLocations}
+                    "locations": games[pin].randomLocations[0]}
         json = jsonify(response)
         return json, 201
     else:
@@ -145,12 +151,12 @@ def update_score():
             else:
 
                 response = {"msg": "End of Round",
-                            "scores": games[pin].scores, "nextRound": games[pin].round}
+                            "scores": games[pin].scores, "nextRound": games[pin].round, "locations": games[pin].randomLocations[games[pin].round]}
                 json = jsonify(response)
                 return json, 200
         else:
             response = {"msg": "Answer Submitted",
-                        "scores": games[pin].scores, "nextRound": games[pin].round+1}
+                        "scores": games[pin].scores, "nextRound": games[pin].round+1, "locations": games[pin].randomLocations[games[pin].round+1]}
             json = jsonify(response)
             return json, 200
 
