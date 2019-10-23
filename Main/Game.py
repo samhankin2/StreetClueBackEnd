@@ -26,7 +26,7 @@ class Game:
     def startGame(self):
         self.playerCount = len(self.arrayOfPlayers)
         self.started = True
-        self.round += 1
+        # self.round += 1
 
     def nextRound(self):
         self.round += 1
