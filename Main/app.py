@@ -6,6 +6,24 @@ from flask import request, Response, jsonify, render_template
 import pusher
 from random import randrange, randint
 import random
+from flask_sqlalchemy import SQLAlchemy
+project_dir = os.path.dirname(os.path.abspath(__file__))
+database_file = "sqlite:///{}".format(
+    os.path.join(project_dir, "locationdatabase.db"))
+app = Flask(__name__)
+# ------------------------------------------
+# Just DB things...
+app.config["SQLALCHEMY_DATABASE_URI"] = database_file
+db = SQLAlchemy(app)
+
+
+class Locations(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    lat = db.Column(db.String(15), nullable=False)
+    lon = db.Column(db.String(15), nullable=False)
+
+    def __repr__(self):
+        return "{},{}".format(self.lat, self.lon)
 
 
 # TODO Make sure the names are unique
@@ -14,8 +32,6 @@ import random
 # TODO LOCATIONS NEEDS A REAL LOOK AT WHEN THE DATABASE HAS FINSIHED BE CAREFUL
 # TODO End of game response needs to be fixed
 # TODO Test
-
-
 
 
 # TODO Make sure the names are unique
@@ -78,9 +94,9 @@ def create_game():
 
     takenPins.append(pin)
 
-    
+    locations = generateLocations(5)
 
-    newGame = Game(pin, locations, 5)
+    newGame = Game(pin, locations, 4)
 
     games[pin] = newGame
     response = {"msg": "Created game sucessfully", "pin": pin}
@@ -101,8 +117,8 @@ def debug():
 
     print(takenPins)
     print(games)
-    print(locations)
-    newGame = Game("9999", locations, 3)
+    locations = generateLocations(5)
+    newGame = Game("9999", locations, 5)
     games["9999"] = newGame
     newPlayer = Player("test")
     newPlayer2 = Player("hello")
@@ -177,14 +193,16 @@ def update_score():
 
     if pin in games:
         games[pin].updateScores(playername, score)
+        print(games[pin].playerCount)
+        print(games[pin].answerCount)
         if games[pin].playerCount == games[pin].answerCount:
             games[pin].answerCount = 0
             games[pin].nextRound()
-            if games[pin].round > games[pin].totalRounds:
+            if games[pin].round == games[pin].totalRounds:
                 channels_client.trigger(str(pin), 'endGame', {
                     'message': games[pin].scores})
                 response = {"msg": "End of Game",
-                            "scores": games[pin].scores}
+                            "scores": games[pin].scores, "nextRound": "none", "locations": [0, 0]}
                 json = jsonify(response)
                 del games[pin]
                 takenPins.remove(pin)
@@ -195,9 +213,14 @@ def update_score():
                             "scores": games[pin].scores, "nextRound": games[pin].round, "locations": games[pin].randomLocations[games[pin].round]}
                 json = jsonify(response)
                 return json, 200
-        else:
+        elif games[pin].round < 4:
             response = {"msg": "Answer Submitted",
                         "scores": games[pin].scores, "nextRound": games[pin].round+1, "locations": games[pin].randomLocations[games[pin].round+1]}
+            json = jsonify(response)
+            return json, 200
+        else:
+            response = {"msg": "End of Game",
+                        "scores": games[pin].scores, "nextRound": "none", "locations": [0, 0]}
             json = jsonify(response)
             return json, 200
 
@@ -241,12 +264,16 @@ def generateLocations(numberOfRounds):
     location3 = Locations.query.filter_by(id=randoms[2]+1).one()
     location4 = Locations.query.filter_by(id=randoms[3]+1).one()
     location5 = Locations.query.filter_by(id=randoms[4]+1).one()
-    locations = [[str(location1)], [str(location2)], [
-        str(location3)], [str(location4)], [str(location5)]]
+
+    print(location1.lat)
+    print(location1.lon)
+
+    locations = [[location1.lat, location1.lon], [location2.lat, location2.lon], [
+        location3.lat, location3.lon], [location4.lat, location4.lon], [location5.lat, location5.lon]]
     print(locations)
 
     return locations
-# def generatePlayerNameArray():
+
 
 def findGame(pin):
     return 0
