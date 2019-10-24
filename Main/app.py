@@ -1,13 +1,40 @@
+import os
 from flask import Flask
-from flask import request, Response, jsonify
+from flask import request, Response, jsonify, render_template
 import pusher
 from random import randrange, randint
 import random
+from flask_sqlalchemy import SQLAlchemy
+
+project_dir = os.path.dirname(os.path.abspath(__file__))
+database_file = "sqlite:///{}".format(os.path.join(project_dir, "locationdatabase.db"))
 
 from Player import Player
 from Game import Game
 
 app = Flask(__name__)
+
+#------------------------------------------
+#Just DB things...
+
+app.config["SQLALCHEMY_DATABASE_URI"] = database_file
+db = SQLAlchemy(app)
+
+class Locations(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    lat = db.Column(db.String(15), nullable=False)
+    lon = db.Column(db.String(15), nullable=False)
+
+    def __repr__(self):
+        return "{},{}".format(self.lat, self.lon)
+
+  
+# if __name__ == "__main__":
+#     app.run(debug=True)
+
+
+
+#-------------------------------------------
 
 # TODO Make sure the names are unique
 # TODO IF YOU GO BACK IT WILL DELETE THE GAME
@@ -77,6 +104,8 @@ def create_game():
         pin = generatePin()
 
     takenPins.append(pin)
+
+    generateLocations(5)
 
     newGame = Game(pin, locations, 5)
 
@@ -230,16 +259,16 @@ def generatePin():
     pin = ''.join(str(randint(0, 9)) for _ in range(4))
     return pin
 
-
-# def getLocations(numberOfRounds):
-#     randomLocations = []
-#     indexs = random.sample(range(0, len(locations)-1), numberOfRounds)
-
-#     for i in indexs:
-#         randomLocations.append(locations[i])
-
-#     return randomLocations
-
+def generateLocations(numberOfRounds):
+    randoms=random.sample(range(132), numberOfRounds)
+    location1 = Locations.query.filter_by(id=randoms[0]+1).one()
+    location2 = Locations.query.filter_by(id=randoms[1]+1).one()
+    location3 = Locations.query.filter_by(id=randoms[2]+1).one()
+    location4 = Locations.query.filter_by(id=randoms[3]+1).one()
+    location5 = Locations.query.filter_by(id=randoms[4]+1).one()
+    locations = [[location1], [location2], [location3], [location4], [location5]]
+    print(locations)
+    
 
 def findGame(pin):
     return 0
