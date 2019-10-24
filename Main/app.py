@@ -14,6 +14,7 @@ app = Flask(__name__)
 # TODO If you go back from waiting room removes you from the list
 # TODO LOCATIONS NEEDS A REAL LOOK AT WHEN THE DATABASE HAS FINSIHED BE CAREFUL
 # TODO End of game response needs to be fixed
+# TODO Test
 
 
 channels_client = pusher.Pusher(
@@ -213,7 +214,6 @@ def generatePin():
 #         randomLocations.append(locations[i])
 
 #     return randomLocations
-
 
 def findGame(pin):
     return 0
