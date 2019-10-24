@@ -51,6 +51,21 @@ def next_round():
     return "worked"
 
 
+# this shouldnt be used
+@app.route("/delete_game", methods=['POST'])
+def delete_game():
+    body = request.json
+    pin = body["pin"]
+    if pin in games:
+        del games[pin]
+        takenPins.remove(pin)
+        return "worked", 204
+    else:
+        response = {"msg": pin + " Doesnt Exists"}
+        json = jsonify(response)
+        return json, 404
+
+
 @app.route('/create_game', methods=['GET'])
 def create_game():
 
@@ -109,14 +124,20 @@ def add_player():
 
     newPlayer = Player(playername)
     if pin in games:
-        games[pin].addPlayer(newPlayer)
-        channels_client.trigger(str(pin), 'playerJoin', {
-                                'message': playername + " Has Joined", "name": playername})
+        if games[pin].started == False:
+            games[pin].addPlayer(newPlayer)
+            channels_client.trigger(str(pin), 'playerJoin', {
+                                    'message': playername + " Has Joined", "name": playername})
 
-        response = {"msg": "Added "+playername+" Successfully",
-                    "locations": games[pin].randomLocations[0]}
-        json = jsonify(response)
-        return json, 201
+            response = {"msg": "Added "+playername+" Successfully",
+                        "locations": games[pin].randomLocations[0]}
+            json = jsonify(response)
+            return json, 201
+        else:
+            response = {"msg": pin + " has already started"}
+            json = jsonify(response)
+            return json, 400
+
     else:
         response = {"msg": pin + " Doesnt Exists"}
         json = jsonify(response)
@@ -157,11 +178,16 @@ def update_score():
             games[pin].answerCount = 0
             games[pin].nextRound()
             if games[pin].round > games[pin].totalRounds:
+                channels_client.trigger(str(pin), 'endGame', {
+                    'message': games[pin].scores})
+                response = {"msg": "End of Game",
+                            "scores": games[pin].scores}
+                json = jsonify(response)
                 del games[pin]
                 takenPins.remove(pin)
-                return "End Game"
-            else:
+                return json, 200
 
+            else:
                 response = {"msg": "End of Round",
                             "scores": games[pin].scores, "nextRound": games[pin].round, "locations": games[pin].randomLocations[games[pin].round]}
                 json = jsonify(response)
