@@ -1,3 +1,5 @@
+from Game import Game
+from Player import Player
 import os
 from flask import Flask
 from flask import request, Response, jsonify, render_template
@@ -7,18 +9,20 @@ import random
 from flask_sqlalchemy import SQLAlchemy
 
 project_dir = os.path.dirname(os.path.abspath(__file__))
-database_file = "sqlite:///{}".format(os.path.join(project_dir, "locationdatabase.db"))
+database_file = "sqlite:///{}".format(
+    os.path.join(project_dir, "locationdatabase.db"))
 
-from Player import Player
-from Game import Game
+print(database_file)
+
 
 app = Flask(__name__)
 
-#------------------------------------------
-#Just DB things...
+# ------------------------------------------
+# Just DB things...
 
 app.config["SQLALCHEMY_DATABASE_URI"] = database_file
 db = SQLAlchemy(app)
+
 
 class Locations(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -28,21 +32,9 @@ class Locations(db.Model):
     def __repr__(self):
         return "{},{}".format(self.lat, self.lon)
 
-  
-# if __name__ == "__main__":
-#     app.run(debug=True)
-
-
-
-#-------------------------------------------
 
 # TODO Make sure the names are unique
-# TODO IF YOU GO BACK IT WILL DELETE THE GAME
 # TODO If you go back from waiting room removes you from the list
-# TODO LOCATIONS NEEDS A REAL LOOK AT WHEN THE DATABASE HAS FINSIHED BE CAREFUL
-# TODO End of game response needs to be fixed
-
-
 channels_client = pusher.Pusher(
     app_id='882302',
     key='e997856aae5ff49795fd',
@@ -51,18 +43,9 @@ channels_client = pusher.Pusher(
     ssl=True
 )
 
-locations = [[-37.2236053, 145.929006],
-             [-42.7111515, 146.8972924],
-             [51.5024273, -0.139319],
-             [-44.5667837, 170.198597],
-             [-38.6770894, 176.07472470]]
 
 takenPins = []
-# locations = ["-37.2236053,145.929006",
-#              "-42.7111515,146.8972924",
-#              "41.2779077,146.036284",
-#              "-44.5667837,170.198597",
-#              "-38.6770894,176.07472470"]
+
 games = {}
 
 
@@ -105,7 +88,7 @@ def create_game():
 
     takenPins.append(pin)
 
-    generateLocations(5)
+    locations = generateLocations(5)
 
     newGame = Game(pin, locations, 5)
 
@@ -129,6 +112,8 @@ def debug():
     print(takenPins)
     print(games)
 
+    locations = generateLocations(5)
+    print(locations)
     newGame = Game("9999", locations, 3)
     games["9999"] = newGame
     newPlayer = Player("test")
@@ -151,9 +136,10 @@ def add_player():
     playername = body["name"]
     pin = body["pin"]
 
-    newPlayer = Player(playername)
     if pin in games:
+        # if playername is in games[pin].pl
         if games[pin].started == False:
+            newPlayer = Player(playername)
             games[pin].addPlayer(newPlayer)
             channels_client.trigger(str(pin), 'playerJoin', {
                                     'message': playername + " Has Joined", "name": playername})
@@ -259,16 +245,21 @@ def generatePin():
     pin = ''.join(str(randint(0, 9)) for _ in range(4))
     return pin
 
+
 def generateLocations(numberOfRounds):
-    randoms=random.sample(range(132), numberOfRounds)
+    randoms = random.sample(range(132), numberOfRounds)
     location1 = Locations.query.filter_by(id=randoms[0]+1).one()
     location2 = Locations.query.filter_by(id=randoms[1]+1).one()
     location3 = Locations.query.filter_by(id=randoms[2]+1).one()
     location4 = Locations.query.filter_by(id=randoms[3]+1).one()
     location5 = Locations.query.filter_by(id=randoms[4]+1).one()
-    locations = [[location1], [location2], [location3], [location4], [location5]]
+    locations = [[str(location1)], [str(location2)], [
+        str(location3)], [str(location4)], [str(location5)]]
     print(locations)
-    
+
+    return locations
+# def generatePlayerNameArray():
+
 
 def findGame(pin):
     return 0
