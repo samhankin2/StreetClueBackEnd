@@ -6,31 +6,16 @@ from flask import request, Response, jsonify, render_template
 import pusher
 from random import randrange, randint
 import random
-from flask_sqlalchemy import SQLAlchemy
-
-project_dir = os.path.dirname(os.path.abspath(__file__))
-database_file = "sqlite:///{}".format(
-    os.path.join(project_dir, "locationdatabase.db"))
-
-print(database_file)
 
 
-app = Flask(__name__)
+# TODO Make sure the names are unique
+# TODO IF YOU GO BACK IT WILL DELETE THE GAME
+# TODO If you go back from waiting room removes you from the list
+# TODO LOCATIONS NEEDS A REAL LOOK AT WHEN THE DATABASE HAS FINSIHED BE CAREFUL
+# TODO End of game response needs to be fixed
+# TODO Test
 
-# ------------------------------------------
-# Just DB things...
 
-app.config["SQLALCHEMY_DATABASE_URI"] = database_file
-db = SQLAlchemy(app)
-
-
-class Locations(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    lat = db.Column(db.String(15), nullable=False)
-    lon = db.Column(db.String(15), nullable=False)
-
-    def __repr__(self):
-        return "{},{}".format(self.lat, self.lon)
 
 
 # TODO Make sure the names are unique
@@ -43,6 +28,11 @@ channels_client = pusher.Pusher(
     ssl=True
 )
 
+locations = [[-37.2236053, 145.929006],
+             [-42.7111515, 146.8972924],
+             [51.5024273, -0.139319],
+             [-44.5667837, 170.198597],
+             [-38.6770894, 176.07472470]]
 
 takenPins = []
 
@@ -88,7 +78,7 @@ def create_game():
 
     takenPins.append(pin)
 
-    locations = generateLocations(5)
+    
 
     newGame = Game(pin, locations, 5)
 
@@ -111,8 +101,6 @@ def debug():
 
     print(takenPins)
     print(games)
-
-    locations = generateLocations(5)
     print(locations)
     newGame = Game("9999", locations, 3)
     games["9999"] = newGame
@@ -259,7 +247,6 @@ def generateLocations(numberOfRounds):
 
     return locations
 # def generatePlayerNameArray():
-
 
 def findGame(pin):
     return 0
