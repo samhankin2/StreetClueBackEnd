@@ -26,27 +26,11 @@ class Locations(db.Model):
     lon = db.Column(db.String(15), nullable=False)
 
     def __repr__(self):
-        return "ID:{} Latitude: {}, Longitude: {}".format(self.id, self.lat, self.lon)
+        return "{},{}".format(self.lat, self.lon)
 
-@app.route("/locations", methods=["GET", "POST"])
-def location():
-    if request.form:
-        location = Locations(lat=request.form.get("lat"), lon=request.form.get("lon"))
-        db.session.add(location)
-        db.session.commit()
-    randoms=random.sample(range(132), 5)
-    location1 = Locations.query.filter_by(id=randoms[0]+1).one()
-    location2 = Locations.query.filter_by(id=randoms[1]+1).one()
-    location3 = Locations.query.filter_by(id=randoms[2]+1).one()
-    location4 = Locations.query.filter_by(id=randoms[3]+1).one()
-    location5 = Locations.query.filter_by(id=randoms[4]+1).one()
-    locations = [location1, location2, location3, location4, location5]
-    # locations = Locations.query.all()
-    # print(locations) 
-    return render_template("locations.html", locations=locations)
   
-if __name__ == "__main__":
-    app.run(debug=True)
+# if __name__ == "__main__":
+#     app.run(debug=True)
 
 
 
@@ -87,6 +71,8 @@ def create_game():
         pin = generatePin()
 
     takenPins.append(pin)
+
+    generateLocations(5)
 
     newGame = Game(pin, locations, 5)
 
@@ -229,16 +215,16 @@ def generatePin():
     pin = ''.join(str(randint(0, 9)) for _ in range(4))
     return pin
 
-
-# def getLocations(numberOfRounds):
-#     randomLocations = []
-#     indexs = random.sample(range(0, len(locations)-1), numberOfRounds)
-
-#     for i in indexs:
-#         randomLocations.append(locations[i])
-
-#     return randomLocations
-
+def generateLocations(numberOfRounds):
+    randoms=random.sample(range(132), numberOfRounds)
+    location1 = Locations.query.filter_by(id=randoms[0]+1).one()
+    location2 = Locations.query.filter_by(id=randoms[1]+1).one()
+    location3 = Locations.query.filter_by(id=randoms[2]+1).one()
+    location4 = Locations.query.filter_by(id=randoms[3]+1).one()
+    location5 = Locations.query.filter_by(id=randoms[4]+1).one()
+    locations = [[location1], [location2], [location3], [location4], [location5]]
+    print(locations)
+    
 
 def findGame(pin):
     return 0
