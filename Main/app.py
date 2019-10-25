@@ -118,7 +118,7 @@ def debug():
     print(takenPins)
     print(games)
     locations = generateLocations(5)
-    newGame = Game("9999", locations, 5)
+    newGame = Game("9999", locations, 4)
     games["9999"] = newGame
     newPlayer = Player("test")
     newPlayer2 = Player("hello")
@@ -190,20 +190,20 @@ def update_score():
     playername = body["name"]
     pin = body["pin"]
     score = body["score"]
-
     if pin in games:
+        print(games[pin].round)
+        print(games[pin].totalRounds)
         games[pin].updateScores(playername, score)
-        print(games[pin].playerCount)
-        print(games[pin].answerCount)
         if games[pin].playerCount == games[pin].answerCount:
             games[pin].answerCount = 0
             games[pin].nextRound()
-            if games[pin].round == games[pin].totalRounds:
+            if games[pin].round > games[pin].totalRounds:
                 channels_client.trigger(str(pin), 'endGame', {
                     'message': games[pin].scores})
                 response = {"msg": "End of Game",
                             "scores": games[pin].scores, "nextRound": "none", "locations": [0, 0]}
                 json = jsonify(response)
+                print("end of game deleted")
                 del games[pin]
                 takenPins.remove(pin)
                 return json, 200
@@ -219,6 +219,7 @@ def update_score():
             json = jsonify(response)
             return json, 200
         else:
+            print("end of game notdeleted")
             response = {"msg": "End of Game",
                         "scores": games[pin].scores, "nextRound": "none", "locations": [0, 0]}
             json = jsonify(response)
@@ -265,12 +266,8 @@ def generateLocations(numberOfRounds):
     location4 = Locations.query.filter_by(id=randoms[3]+1).one()
     location5 = Locations.query.filter_by(id=randoms[4]+1).one()
 
-    print(location1.lat)
-    print(location1.lon)
-
     locations = [[location1.lat, location1.lon], [location2.lat, location2.lon], [
         location3.lat, location3.lon], [location4.lat, location4.lon], [location5.lat, location5.lon]]
-    print(locations)
 
     return locations
 
