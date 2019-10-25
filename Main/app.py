@@ -1,3 +1,5 @@
+from Game import Game
+from Player import Player
 import os
 from flask import Flask
 from flask import request, Response, jsonify, render_template
@@ -5,20 +7,15 @@ import pusher
 from random import randrange, randint
 import random
 from flask_sqlalchemy import SQLAlchemy
-
 project_dir = os.path.dirname(os.path.abspath(__file__))
-database_file = "sqlite:///{}".format(os.path.join(project_dir, "locationdatabase.db"))
-
-from Player import Player
-from Game import Game
-
+database_file = "sqlite:///{}".format(
+    os.path.join(project_dir, "locationdatabase.db"))
 app = Flask(__name__)
-
-#------------------------------------------
-#Just DB things...
-
+# ------------------------------------------
+# Just DB things...
 app.config["SQLALCHEMY_DATABASE_URI"] = database_file
 db = SQLAlchemy(app)
+
 
 class Locations(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -28,21 +25,17 @@ class Locations(db.Model):
     def __repr__(self):
         return "{},{}".format(self.lat, self.lon)
 
-  
-# if __name__ == "__main__":
-#     app.run(debug=True)
-
-
-
-#-------------------------------------------
 
 # TODO Make sure the names are unique
 # TODO IF YOU GO BACK IT WILL DELETE THE GAME
 # TODO If you go back from waiting room removes you from the list
 # TODO LOCATIONS NEEDS A REAL LOOK AT WHEN THE DATABASE HAS FINSIHED BE CAREFUL
 # TODO End of game response needs to be fixed
+# TODO Test
 
 
+# TODO Make sure the names are unique
+# TODO If you go back from waiting room removes you from the list
 channels_client = pusher.Pusher(
     app_id='882302',
     key='e997856aae5ff49795fd',
@@ -58,11 +51,7 @@ locations = [[-37.2236053, 145.929006],
              [-38.6770894, 176.07472470]]
 
 takenPins = []
-# locations = ["-37.2236053,145.929006",
-#              "-42.7111515,146.8972924",
-#              "41.2779077,146.036284",
-#              "-44.5667837,170.198597",
-#              "-38.6770894,176.07472470"]
+
 games = {}
 
 
@@ -105,9 +94,9 @@ def create_game():
 
     takenPins.append(pin)
 
-    generateLocations(5)
+    locations = generateLocations(5)
 
-    newGame = Game(pin, locations, 5)
+    newGame = Game(pin, locations, 4)
 
     games[pin] = newGame
     response = {"msg": "Created game sucessfully", "pin": pin}
@@ -128,8 +117,8 @@ def debug():
 
     print(takenPins)
     print(games)
-
-    newGame = Game("9999", locations, 3)
+    locations = generateLocations(5)
+    newGame = Game("9999", locations, 5)
     games["9999"] = newGame
     newPlayer = Player("test")
     newPlayer2 = Player("hello")
@@ -151,9 +140,10 @@ def add_player():
     playername = body["name"]
     pin = body["pin"]
 
-    newPlayer = Player(playername)
     if pin in games:
+        # if playername is in games[pin].pl
         if games[pin].started == False:
+            newPlayer = Player(playername)
             games[pin].addPlayer(newPlayer)
             channels_client.trigger(str(pin), 'playerJoin', {
                                     'message': playername + " Has Joined", "name": playername})
@@ -203,14 +193,16 @@ def update_score():
 
     if pin in games:
         games[pin].updateScores(playername, score)
+        print(games[pin].playerCount)
+        print(games[pin].answerCount)
         if games[pin].playerCount == games[pin].answerCount:
             games[pin].answerCount = 0
             games[pin].nextRound()
-            if games[pin].round > games[pin].totalRounds:
+            if games[pin].round == games[pin].totalRounds:
                 channels_client.trigger(str(pin), 'endGame', {
                     'message': games[pin].scores})
                 response = {"msg": "End of Game",
-                            "scores": games[pin].scores}
+                            "scores": games[pin].scores, "nextRound": "none", "locations": [0, 0]}
                 json = jsonify(response)
                 del games[pin]
                 takenPins.remove(pin)
@@ -221,9 +213,14 @@ def update_score():
                             "scores": games[pin].scores, "nextRound": games[pin].round, "locations": games[pin].randomLocations[games[pin].round]}
                 json = jsonify(response)
                 return json, 200
-        else:
+        elif games[pin].round < 4:
             response = {"msg": "Answer Submitted",
                         "scores": games[pin].scores, "nextRound": games[pin].round+1, "locations": games[pin].randomLocations[games[pin].round+1]}
+            json = jsonify(response)
+            return json, 200
+        else:
+            response = {"msg": "End of Game",
+                        "scores": games[pin].scores, "nextRound": "none", "locations": [0, 0]}
             json = jsonify(response)
             return json, 200
 
@@ -259,16 +256,24 @@ def generatePin():
     pin = ''.join(str(randint(0, 9)) for _ in range(4))
     return pin
 
+
 def generateLocations(numberOfRounds):
-    randoms=random.sample(range(132), numberOfRounds)
+    randoms = random.sample(range(132), numberOfRounds)
     location1 = Locations.query.filter_by(id=randoms[0]+1).one()
     location2 = Locations.query.filter_by(id=randoms[1]+1).one()
     location3 = Locations.query.filter_by(id=randoms[2]+1).one()
     location4 = Locations.query.filter_by(id=randoms[3]+1).one()
     location5 = Locations.query.filter_by(id=randoms[4]+1).one()
-    locations = [[location1], [location2], [location3], [location4], [location5]]
+
+    print(location1.lat)
+    print(location1.lon)
+
+    locations = [[location1.lat, location1.lon], [location2.lat, location2.lon], [
+        location3.lat, location3.lon], [location4.lat, location4.lon], [location5.lat, location5.lon]]
     print(locations)
-    
+
+    return locations
+
 
 def findGame(pin):
     return 0
