@@ -118,7 +118,7 @@ def debug():
     print(takenPins)
     print(games)
     locations = generateLocations(5)
-    newGame = Game("9999", locations, 5)
+    newGame = Game("9999", locations, 4)
     games["9999"] = newGame
     newPlayer = Player("test")
     newPlayer2 = Player("hello")
@@ -128,6 +128,9 @@ def debug():
     games["9999"].startGame()
 
     takenPins.append("9999")
+
+    channels_client.trigger("test", 'endGame', {
+        'message': "asafs"})
 
     return "hi!"
 
@@ -185,42 +188,51 @@ def start_game():
 
 @app.route('/update_score', methods=['POST'])
 def update_score():
+
     # TODO need to sort out the pusher here.. deffo tomoz job`
     body = request.json
     playername = body["name"]
     pin = body["pin"]
     score = body["score"]
-
     if pin in games:
+        print(games[pin].round)
+        print(games[pin].totalRounds)
         games[pin].updateScores(playername, score)
-        print(games[pin].playerCount)
-        print(games[pin].answerCount)
         if games[pin].playerCount == games[pin].answerCount:
             games[pin].answerCount = 0
             games[pin].nextRound()
-            if games[pin].round == games[pin].totalRounds:
+            if games[pin].round > games[pin].totalRounds:
                 channels_client.trigger(str(pin), 'endGame', {
                     'message': games[pin].scores})
+                channels_client.trigger(str(pin), 'endRound', {
+                    'message': "test"})
                 response = {"msg": "End of Game",
-                            "scores": games[pin].scores, "nextRound": "none", "locations": [0, 0]}
+                            "scores": games[pin].scores, "nextRound": "none", "locations": [0, 0], "endGame": True}
                 json = jsonify(response)
+                print("end of game deleted")
                 del games[pin]
                 takenPins.remove(pin)
                 return json, 200
 
             else:
+                channels_client.trigger(str(pin), 'endRound', {
+                    'message': "test"})
                 response = {"msg": "End of Round",
-                            "scores": games[pin].scores, "nextRound": games[pin].round, "locations": games[pin].randomLocations[games[pin].round]}
+                            "scores": games[pin].scores, "nextRound": games[pin].round, "locations": games[pin].randomLocations[games[pin].round], "endGame": False}
                 json = jsonify(response)
                 return json, 200
+
         elif games[pin].round < 4:
             response = {"msg": "Answer Submitted",
-                        "scores": games[pin].scores, "nextRound": games[pin].round+1, "locations": games[pin].randomLocations[games[pin].round+1]}
+                        "scores": games[pin].scores, "nextRound": games[pin].round+1, "locations": games[pin].randomLocations[games[pin].round+1], "endGame": False}
             json = jsonify(response)
             return json, 200
+
         else:
-            response = {"msg": "End of Game",
-                        "scores": games[pin].scores, "nextRound": "none", "locations": [0, 0]}
+            # channels_client.trigger(str(pin), 'endsRound', {
+            #     'message': "test"})
+            response = {"msg": "End of Game1",
+                        "scores": games[pin].scores, "nextRound": "none", "locations": [0, 0], "endGame": True}
             json = jsonify(response)
             return json, 200
 
@@ -265,12 +277,8 @@ def generateLocations(numberOfRounds):
     location4 = Locations.query.filter_by(id=randoms[3]+1).one()
     location5 = Locations.query.filter_by(id=randoms[4]+1).one()
 
-    print(location1.lat)
-    print(location1.lon)
-
     locations = [[location1.lat, location1.lon], [location2.lat, location2.lon], [
         location3.lat, location3.lon], [location4.lat, location4.lon], [location5.lat, location5.lon]]
-    print(locations)
 
     return locations
 
