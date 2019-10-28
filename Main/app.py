@@ -129,8 +129,10 @@ def debug():
 
     takenPins.append("9999")
 
-    channels_client.trigger("test", 'endGame', {
-        'message': "asafs"})
+    # print(games["9999"].arrayOfPlayers)
+
+    # channels_client.trigger("test", 'endGame', {
+    #     'message': "asafs"})
 
     return "hi!"
 
@@ -144,19 +146,24 @@ def add_player():
     pin = body["pin"]
 
     if pin in games:
-        # if playername is in games[pin].pl
-        if games[pin].started == False:
-            newPlayer = Player(playername)
-            games[pin].addPlayer(newPlayer)
-            channels_client.trigger(str(pin), 'playerJoin', {
-                                    'message': playername + " Has Joined", "name": playername})
+        namesInGame = generatePlayerNamesArray(pin)
+        if not playername in namesInGame:
+            if games[pin].started == False:
+                newPlayer = Player(playername)
+                games[pin].addPlayer(newPlayer)
+                channels_client.trigger(str(pin), 'playerJoin', {
+                                        'message': playername + " Has Joined", "name": playername})
 
-            response = {"msg": "Added "+playername+" Successfully",
-                        "locations": games[pin].randomLocations[0]}
-            json = jsonify(response)
-            return json, 201
+                response = {"msg": "Added "+playername+" Successfully",
+                            "locations": games[pin].randomLocations[0]}
+                json = jsonify(response)
+                return json, 201
+            else:
+                response = {"msg": pin + " has already started"}
+                json = jsonify(response)
+                return json, 400
         else:
-            response = {"msg": pin + " has already started"}
+            response = {"msg": playername + " is already taken"}
             json = jsonify(response)
             return json, 400
 
@@ -190,6 +197,7 @@ def start_game():
 def update_score():
 
     # TODO need to sort out the pusher here.. deffo tomoz job`
+    # TODO assign object to variable isntead of game["pin"]
     body = request.json
     playername = body["name"]
     pin = body["pin"]
@@ -198,9 +206,11 @@ def update_score():
         print(games[pin].round)
         print(games[pin].totalRounds)
         games[pin].updateScores(playername, score)
+        # Check end of round
         if games[pin].playerCount == games[pin].answerCount:
             games[pin].answerCount = 0
             games[pin].nextRound()
+            # check end of game
             if games[pin].round > games[pin].totalRounds:
                 channels_client.trigger(str(pin), 'endGame', {
                     'message': games[pin].scores})
@@ -213,7 +223,7 @@ def update_score():
                 del games[pin]
                 takenPins.remove(pin)
                 return json, 200
-
+            # not end of game, but is end of round
             else:
                 channels_client.trigger(str(pin), 'endRound', {
                     'message': "test"})
@@ -221,13 +231,13 @@ def update_score():
                             "scores": games[pin].scores, "nextRound": games[pin].round, "locations": games[pin].randomLocations[games[pin].round], "endGame": False}
                 json = jsonify(response)
                 return json, 200
-
+        # not end of round, check not end of game
         elif games[pin].round < 4:
             response = {"msg": "Answer Submitted",
                         "scores": games[pin].scores, "nextRound": games[pin].round+1, "locations": games[pin].randomLocations[games[pin].round+1], "endGame": False}
             json = jsonify(response)
             return json, 200
-
+        # not end of round, but is end of game
         else:
             # channels_client.trigger(str(pin), 'endsRound', {
             #     'message': "test"})
@@ -250,9 +260,7 @@ def get_players():
 
     print(x)
     if pin in games:
-        names = []
-        for player in games[pin].arrayOfPlayers:
-            names.append(player.name)
+        names = generatePlayerNamesArray(pin)
 
         response = {
             "players": names}
@@ -267,6 +275,15 @@ def get_players():
 def generatePin():
     pin = ''.join(str(randint(0, 9)) for _ in range(4))
     return pin
+
+
+def generatePlayerNamesArray(pin):
+
+    names = []
+    for player in games[pin].arrayOfPlayers:
+        names.append(player.name)
+
+    return names
 
 
 def generateLocations(numberOfRounds):
