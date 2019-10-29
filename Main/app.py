@@ -155,6 +155,7 @@ def debug():
 
 @app.route('/add_player', methods=['POST'])
 def add_player():
+
     body = request.json
     playername = body["name"]
     pin = body["pin"]
@@ -162,12 +163,14 @@ def add_player():
     if not pin in games:
         return handleNotPinInGames(pin), 404
 
+    games[pin].generatePlayerNamesArray()
+
     if games[pin].started == True:
         response = {"msg": pin + " has already started"}
         json = jsonify(response)
         return json, 400
 
-    if playername in games[pin].arrayOfPlayerNames:
+    if playername in games[pin].arrayOfPlayerNames and len(games[pin].arrayOfPlayers) > 0:
         response = {"msg": playername + " is already taken"}
         json = jsonify(response)
         return json, 400

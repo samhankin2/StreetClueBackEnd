@@ -48,3 +48,4 @@ class Game:
             names.append(player.name)
 
         self.arrayOfPlayerNames = names
+        return self.arrayOfPlayerNames
