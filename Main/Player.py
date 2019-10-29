@@ -2,15 +2,15 @@ class Player:
     """Player class to contain all player's data"""
     # TODO getters and setters
 
-    def __init__(self, name):
+    def __init__(self, name, colour):
         self.name = name
         self.score = 0
         self.lat = 0
         self.long = 0
-        # TODO color
+        self.colour = colour
 
-    def addScore(self, score):
-        self.score += score
+    def addLatestScore(self, score):
+        self.score = score
 
     def addLatestLocation(self, lat, long):
         self.lat = lat

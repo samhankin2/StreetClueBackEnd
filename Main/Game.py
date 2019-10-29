@@ -4,7 +4,7 @@ class Game:
     def __init__(self, pin, randomLocations, totalRounds):
         self.pin = pin
         self.arrayOfPlayers = []
-        self.arrayOfPlayerNames = None
+        self.arrayOfPlayerDetails = None
         self.scores = {}
         self.round = 0
         self.totalRounds = totalRounds
@@ -16,15 +16,19 @@ class Game:
 
     def addPlayer(self, player):
         self.arrayOfPlayers.append(player)
-        self.generatePlayerNamesArray()
+        self.generatePlayerDetailsArray()
         self.scores[player.name] = 0
 
     def calcPlayerCount(self):
         self.playerCount = len(self.arrayOfPlayers)
 
-    def updateScores(self, player, score):
+    def updateScores(self, name, score, latitude, longitude, colour):
         self.answerCount += 1
-        self.scores[player] += score
+        self.scores[name]["totalScore"] += score
+        self.scores[name]["roundScore"] = score
+        self.scores[name]["currLat"] = latitude
+        self.scores[name]["currLong"] = longitude
+        self.scores[name]["colour"] = colour
 
     def startGame(self):
         self.playerCount = len(self.arrayOfPlayers)
@@ -42,9 +46,12 @@ class Game:
     def isEndGame(self):
         return self.round == self.totalRounds
 
-    def generatePlayerNamesArray(self):
+    def generatePlayerDetailsArray(self):
         names = []
+        if len(self.arrayOfPlayers) == 0:
+            return 0
+            
         for player in self.arrayOfPlayers:
-            names.append(player.name)
+            names.append({"name": player.name, "colour": player.colour})
 
-        self.arrayOfPlayerNames = names
+        self.arrayOfPlayerDetails = names

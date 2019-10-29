@@ -63,7 +63,7 @@ def remove_player():
     for person in game.arrayOfPlayers:
         if person.name == name:
             del game.arrayOfPlayers[count]
-            game.generatePlayerNamesArray()
+            game.generatePlayerDetailsArray()
         count += 1
 
     return "asdasd", 204
@@ -158,6 +158,7 @@ def add_player():
     body = request.json
     playername = body["name"]
     pin = body["pin"]
+    playercolour = body["colour"]
 
     if not pin in games:
         return handleNotPinInGames(pin), 404
@@ -167,15 +168,18 @@ def add_player():
         json = jsonify(response)
         return json, 400
 
-    if playername in games[pin].arrayOfPlayerNames:
-        response = {"msg": playername + " is already taken"}
-        json = jsonify(response)
-        return json, 400
+    # games[pin].generatePlayerDetailsArray()
+    if not len(games[pin].arrayOfPlayers) == 0:
+        for player in games[pin].arrayOfPlayerDetails:
+            if player["name"] == playername:
+                response = {"msg": playername + " is already taken"}
+                json = jsonify(response)
+                return json, 400
 
-    newPlayer = Player(playername)
+    newPlayer = Player(playername, playercolour)
     games[pin].addPlayer(newPlayer)
     channels_client.trigger(str(pin), 'playerJoin', {
-                            'message': playername + " Has Joined", "name": playername})
+                            'message': playername + " Has Joined", "name": playername, "colour": playercolour})
 
     response = {"msg": "Added "+playername+" Successfully",
                 "locations": games[pin].randomLocations[0]}
@@ -208,12 +212,16 @@ def update_score():
     playername = body["name"]
     pin = body["pin"]
     score = body["score"]
+    latitude = body["latitude"]
+    longitude = body["longitude"]
+    playercolour = body["colour"]
 
     if not pin in games:
         return handleNotPinInGames(pin), 404
 
     game = games[pin]
-    game.updateScores(playername, score)
+    
+    game.updateScores(playername, score, latitude, longitude, playercolour)
 
     if game.isEndRound() and game.isEndGame():
         channels_client.trigger(str(pin), 'endGame', {
@@ -249,10 +257,10 @@ def get_players():
     if not pin in games:
         return handleNotPinInGames(pin), 404
     game = games[pin]
-    game.generatePlayerNamesArray()
+    game.generatePlayerDetailsArray()
 
     response = {
-        "players": game.arrayOfPlayerNames}
+        "players": game.arrayOfPlayerDetails}
     json = jsonify(response)
     return json, 200
 
