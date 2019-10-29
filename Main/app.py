@@ -66,6 +66,9 @@ def remove_player():
             game.generatePlayerNamesArray()
         count += 1
 
+    channels_client.trigger(str(pin), 'playerLeave', {
+                            'message': name + " Has left", "name": name})
+
     return "asdasd", 204
 
 
@@ -131,24 +134,24 @@ def debug():
 
     print(takenPins)
     print(games)
-    locations = generateLocations(5)
-    newGame = Game("9999", locations, 4)
-    games["9999"] = newGame
-    newPlayer = Player("test")
-    newPlayer2 = Player("hello")
-    games["9999"].addPlayer(newPlayer)
-    games["9999"].addPlayer(newPlayer2)
+    # locations = generateLocations(5)
+    # newGame = Game("9999", locations, 4)
+    # games["9999"] = newGame
+    # newPlayer = Player("test")
+    # newPlayer2 = Player("hello")
+    # games["9999"].addPlayer(newPlayer)
+    # games["9999"].addPlayer(newPlayer2)
 
-    games["9999"].startGame()
+    # games["9999"].startGame()
 
-    takenPins.append("9999")
+    # takenPins.append("9999")
 
-    # print(games["9999"].arrayOfPlayers)
+    # # print(games["9999"].arrayOfPlayers)
 
-    # channels_client.trigger("test", 'endGame', {
-    #     'message': "asafs"})
+    # # channels_client.trigger("test", 'endGame', {
+    # #     'message': "asafs"})
 
-    return "hi!"
+    # return "hi!"
 
     return " hi "
 
