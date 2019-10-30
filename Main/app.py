@@ -6,7 +6,7 @@ from flask import request, Response, jsonify, render_template
 import pusher
 from random import randrange, randint
 import random
-from mysqlconfig import config
+from Main.mysqlconfig import config
 import json
 from flask_mysqldb import MySQL
 app = Flask(__name__)
