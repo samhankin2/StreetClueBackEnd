@@ -139,6 +139,7 @@ def create_game():
         pin = generatePin()
 
     takenPins.append(pin)
+    print(takenPins)
 
     locations = generateLocations(5)
 
@@ -173,7 +174,7 @@ def debug():
     games["9999"].addPlayer(newPlayer2)
 
 
-    # takenPins.append("9999")
+    takenPins.append("9999")
 
     # # print(games["9999"].arrayOfPlayers)
 
@@ -314,7 +315,7 @@ def generateLocations(numberOfRounds):
     print(data[1])
     for i in randoms:
         print(i)
-        content = [(data[i])[0], (data[i])[1]]
+        content = [(data[i])[1], (data[i])[2]]
         locations.append(content)
         content = []
     print(locations)
