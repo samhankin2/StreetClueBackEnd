@@ -6,17 +6,27 @@ from flask import request, Response, jsonify, render_template
 import pusher
 from random import randrange, randint
 import random
-from Main.mysqlconfig import config
 import json
 from flask_mysqldb import MySQL
 app = Flask(__name__)
 # ------------------------------------------
 # Just DB things...
 
-app.config['MYSQL_HOST'] = config["mysql_host"]
-app.config['MYSQL_USER'] = config["mysql_user"]
-app.config['MYSQL_PASSWORD'] = config["mysql_password"]
-app.config['MYSQL_DB'] = config["mysql_db"]
+is_prod = os.environ.get('IS_HEROKU', None)
+
+if is_prod:
+    os.environ.get('mysql_host', None)
+    app.config['MYSQL_HOST'] = os.environ.get('mysql_host', None)
+    app.config['MYSQL_USER'] = os.environ.get("mysql_user", None)
+    app.config['MYSQL_PASSWORD'] = os.environ.get("mysql_password", None)
+    app.config['MYSQL_DB'] = os.environ.get("mysql_db", None)
+
+else:
+    from Main.mysqlconfig import config
+    app.config['MYSQL_HOST'] = config["mysql_host"]
+    app.config['MYSQL_USER'] = config["mysql_user"]
+    app.config['MYSQL_PASSWORD'] = config["mysql_password"]
+    app.config['MYSQL_DB'] = config["mysql_db"]
 mysql = MySQL(app)
 
 
