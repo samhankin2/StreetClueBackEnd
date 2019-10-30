@@ -7,7 +7,6 @@ class Player:
         self.score = 0
         self.lat = 0
         self.long = 0
-        # TODO color
 
     def addScore(self, score):
         self.score += score

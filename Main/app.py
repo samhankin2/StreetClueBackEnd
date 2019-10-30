@@ -50,16 +50,17 @@ def index():
     return render_template('locations.html')
 
 
-# TODO Make sure the names are unique
 # TODO IF YOU GO BACK IT WILL DELETE THE GAME
 # TODO If you go back from waiting room removes you from the list
-# TODO LOCATIONS NEEDS A REAL LOOK AT WHEN THE DATABASE HAS FINSIHED BE CAREFUL
-# TODO End of game response needs to be fixed
-# TODO Test
+# TODO sort of the request types from post to patch etc (maybe)
+# TODO make amount of rounds customisable
+# TODO handle multiple pins:
+    # send to the server the guessed locations
+    # store that in an array
+    # send back at map result
+    # push back any further additions
 
 
-# TODO Make sure the names are unique
-# TODO If you go back from waiting room removes you from the list
 channels_client = pusher.Pusher(
     app_id='890224',
     key='0c067d9d3a75d2722d94',
@@ -68,15 +69,31 @@ channels_client = pusher.Pusher(
     ssl=True
 )
 
-locations = [[-37.2236053, 145.929006],
-             [-42.7111515, 146.8972924],
-             [51.5024273, -0.139319],
-             [-44.5667837, 170.198597],
-             [-38.6770894, 176.07472470]]
 
 takenPins = []
 
 games = {}
+
+
+@app.route("/remove_player", methods=['POST'])
+def remove_player():
+    body = request.json
+    pin = body["pin"]
+    name = body["name"]
+
+    game = games[pin]
+
+    count = 0
+    for person in game.arrayOfPlayers:
+        if person.name == name:
+            del game.arrayOfPlayers[count]
+            game.generatePlayerNamesArray()
+        count += 1
+
+    channels_client.trigger(str(pin), 'playerLeave', {
+                            'message': name + " Has left", "name": name})
+
+    return "asdasd", 204
 
 
 @app.route("/next_round", methods=['POST'])
@@ -94,16 +111,16 @@ def next_round():
 # this shouldnt be used
 @app.route("/delete_game", methods=['POST'])
 def delete_game():
+
     body = request.json
     pin = body["pin"]
-    if pin in games:
-        del games[pin]
-        takenPins.remove(pin)
-        return "worked", 204
-    else:
-        response = {"msg": pin + " Doesnt Exists"}
-        json = jsonify(response)
-        return json, 404
+
+    if not pin in games:
+        return handleNotPinInGames(pin), 404
+
+    del games[pin]
+    takenPins.remove(pin)
+    return "worked", 204
 
 
 @app.route('/create_game', methods=['GET'])
@@ -141,6 +158,7 @@ def debug():
 
     print(takenPins)
     print(games)
+
     locations = generateLocations(3)
     newGame = Game("9999", locations, 4)
     games["9999"] = newGame
@@ -149,45 +167,50 @@ def debug():
     games["9999"].addPlayer(newPlayer)
     games["9999"].addPlayer(newPlayer2)
 
-    games["9999"].startGame()
 
-    takenPins.append("9999")
+    # takenPins.append("9999")
 
-    channels_client.trigger("test", 'endGame', {
-        'message': "asafs"})
+    # # print(games["9999"].arrayOfPlayers)
 
-    return "hi!"
+    # # channels_client.trigger("test", 'endGame', {
+    # #     'message': "asafs"})
+
+    # return "hi!"
 
     return " hi "
 
 
 @app.route('/add_player', methods=['POST'])
 def add_player():
+
     body = request.json
     playername = body["name"]
     pin = body["pin"]
 
-    if pin in games:
-        # if playername is in games[pin].pl
-        if games[pin].started == False:
-            newPlayer = Player(playername)
-            games[pin].addPlayer(newPlayer)
-            channels_client.trigger(str(pin), 'playerJoin', {
-                                    'message': playername + " Has Joined", "name": playername})
+    if not pin in games:
+        return handleNotPinInGames(pin), 404
 
-            response = {"msg": "Added "+playername+" Successfully",
-                        "locations": games[pin].randomLocations[0]}
-            json = jsonify(response)
-            return json, 201
-        else:
-            response = {"msg": pin + " has already started"}
-            json = jsonify(response)
-            return json, 400
+    games[pin].generatePlayerNamesArray()
 
-    else:
-        response = {"msg": pin + " Doesnt Exists"}
+    if games[pin].started == True:
+        response = {"msg": pin + " has already started"}
         json = jsonify(response)
-        return json, 404
+        return json, 400
+
+    if playername in games[pin].arrayOfPlayerNames and len(games[pin].arrayOfPlayers) > 0:
+        response = {"msg": playername + " is already taken"}
+        json = jsonify(response)
+        return json, 400
+
+    newPlayer = Player(playername)
+    games[pin].addPlayer(newPlayer)
+    channels_client.trigger(str(pin), 'playerJoin', {
+                            'message': playername + " Has Joined", "name": playername})
+
+    response = {"msg": "Added "+playername+" Successfully",
+                "locations": games[pin].randomLocations[0]}
+    json = jsonify(response)
+    return json, 201
 
 
 @app.route('/start_game', methods=['POST'])
@@ -196,18 +219,15 @@ def start_game():
 
     pin = body["pin"]
 
-    if pin in games:
-        games[pin].startGame()
-        channels_client.trigger(str(pin), 'startGame', {
-                                'message': 'game ' + pin + ' has started'})
-        response = {"msg": "started game sucessfully", "pin": pin}
-        json = jsonify(response)
-        return json
+    if not pin in games:
+        return handleNotPinInGames(pin), 404
 
-    else:
-        response = {"msg": pin + " Doesnt Exists"}
-        json = jsonify(response)
-        return json, 404
+    games[pin].startGame()
+    channels_client.trigger(str(pin), 'startGame', {
+                            'message': 'game ' + pin + ' has started'})
+    response = {"msg": "started game sucessfully", "pin": pin}
+    json = jsonify(response)
+    return json
 
 
 @app.route('/update_score', methods=['POST'])
@@ -218,74 +238,53 @@ def update_score():
     playername = body["name"]
     pin = body["pin"]
     score = body["score"]
-    if pin in games:
-        print(games[pin].round)
-        print(games[pin].totalRounds)
-        games[pin].updateScores(playername, score)
-        if games[pin].playerCount == games[pin].answerCount:
-            games[pin].answerCount = 0
-            games[pin].nextRound()
-            if games[pin].round > games[pin].totalRounds:
-                channels_client.trigger(str(pin), 'endGame', {
-                    'message': games[pin].scores})
-                channels_client.trigger(str(pin), 'endRound', {
-                    'message': "test"})
-                response = {"msg": "End of Game",
-                            "scores": games[pin].scores, "nextRound": "none", "locations": [0, 0], "endGame": True}
-                json = jsonify(response)
-                print("end of game deleted")
-                del games[pin]
-                takenPins.remove(pin)
-                return json, 200
 
-            else:
-                channels_client.trigger(str(pin), 'endRound', {
-                    'message': "test"})
-                response = {"msg": "End of Round",
-                            "scores": games[pin].scores, "nextRound": games[pin].round, "locations": games[pin].randomLocations[games[pin].round], "endGame": False}
-                json = jsonify(response)
-                return json, 200
+    if not pin in games:
+        return handleNotPinInGames(pin), 404
 
-        elif games[pin].round < 4:
-            response = {"msg": "Answer Submitted",
-                        "scores": games[pin].scores, "nextRound": games[pin].round+1, "locations": games[pin].randomLocations[games[pin].round+1], "endGame": False}
-            json = jsonify(response)
-            return json, 200
+    game = games[pin]
+    game.updateScores(playername, score)
 
-        else:
-            # channels_client.trigger(str(pin), 'endsRound', {
-            #     'message': "test"})
-            response = {"msg": "End of Game1",
-                        "scores": games[pin].scores, "nextRound": "none", "locations": [0, 0], "endGame": True}
-            json = jsonify(response)
-            return json, 200
+    if game.isEndRound() and game.isEndGame():
+        channels_client.trigger(str(pin), 'endGame', {
+            'message': game.scores})
+        triggerEndRoundPusher(pin)
+        del games[pin]
+        takenPins.remove(pin)
+        return endGameResponseHandler(game, "End of Game"), 200
 
-    else:
-        response = {"msg": pin + " Doesnt Exists"}
-        json = jsonify(response)
-        return json, 404
+    if game.isEndRound() and not game.isEndGame():
+
+        triggerEndRoundPusher(pin)
+        print("end of round and not end of game")
+        response = answerSubmittedHandler(game, "End of Round")
+        game.answerCount = 0
+        game.nextRound()
+        return response, 200
+
+    if not game.isEndRound() and game.isEndGame():
+        print("not end of round and end of game")
+        return endGameResponseHandler(game, "Go To Leaderboard screen next"), 200
+
+    if not game.isEndRound() and not game.isEndGame():
+        print("not end of game and not end of round")
+        return answerSubmittedHandler(game, "Answer Submitted"), 200
 
 
 @app.route('/get_players', methods=['POST'])
 def get_players():
     body = request.json
     pin = body["pin"]
-    x = games[pin].scores.keys()
 
-    print(x)
-    if pin in games:
-        names = []
-        for player in games[pin].arrayOfPlayers:
-            names.append(player.name)
+    if not pin in games:
+        return handleNotPinInGames(pin), 404
+    game = games[pin]
+    game.generatePlayerNamesArray()
 
-        response = {
-            "players": names}
-        json = jsonify(response)
-        return json, 200
-    else:
-        response = {"msg": pin + " Doesnt Exists"}
-        json = jsonify(response)
-        return json, 404
+    response = {
+        "players": game.arrayOfPlayerNames}
+    json = jsonify(response)
+    return json, 200
 
 
 def generatePin():
@@ -313,6 +312,31 @@ def generateLocations(numberOfRounds):
     return locations
 
 
+
+def triggerEndRoundPusher(pin):
+    channels_client.trigger(str(pin), 'endRound', {
+        'message': "test"})
+
+
+def endGameResponseHandler(game, msg):
+    response = {"msg": msg,
+                "scores": game.scores, "nextRound": "none", "locations": [0, 0], "endGame": True}
+    json = jsonify(response)
+    return json
+
+
+def answerSubmittedHandler(game, msg):
+    response = {"msg": msg,
+                "scores": game.scores, "nextRound": game.round+1, "locations": game.randomLocations[game.round+1], "endGame": False}
+    json = jsonify(response)
+    return json
+
+
+def handleNotPinInGames(pin):
+    response = {"msg": pin + " Doesnt Exists"}
+    json = jsonify(response)
+    return json
+=======
 def findGame(pin):
     return 0
 
