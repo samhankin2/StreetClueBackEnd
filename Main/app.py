@@ -336,7 +336,7 @@ def handleNotPinInGames(pin):
     response = {"msg": pin + " Doesnt Exists"}
     json = jsonify(response)
     return json
-=======
+
 def findGame(pin):
     return 0
 
