@@ -13,8 +13,6 @@ app = Flask(__name__)
 # ------------------------------------------
 # Just DB things...
 
-print(config)
-
 app.config['MYSQL_HOST'] = config["mysql_host"]
 app.config['MYSQL_USER'] = config["mysql_user"]
 app.config['MYSQL_PASSWORD'] = config["mysql_password"]
@@ -29,7 +27,7 @@ def index():
         latitude = details['lat']
         longitude = details['lon']
         cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO Coordinates(latitude, longitude) VALUES (%s, %s)", (latitude, longitude))
+        cur.execute("INSERT INTO coordinates(latitude, longitude) VALUES (%s, %s)", (latitude, longitude))
         mysql.connection.commit()
         cur.close()
         return 'success'
