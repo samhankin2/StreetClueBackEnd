@@ -1,1 +1,1 @@
-__all__ = ["Game", "Player"]
+__all__ = ["Game", "Player", "mysqlconfig"]
