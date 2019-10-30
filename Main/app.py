@@ -69,6 +69,11 @@ channels_client = pusher.Pusher(
     ssl=True
 )
 
+locations = [[-37.2236053, 145.929006],
+             [-42.7111515, 146.8972924],
+             [51.5024273, -0.139319],
+             [-44.5667837, 170.198597],
+             [-38.6770894, 176.07472470]]
 
 takenPins = []
 
@@ -159,7 +164,7 @@ def debug():
     print(takenPins)
     print(games)
 
-    locations = generateLocations(3)
+    # locations = generateLocations(5)
     newGame = Game("9999", locations, 4)
     games["9999"] = newGame
     newPlayer = Player("test")
@@ -232,6 +237,10 @@ def start_game():
 
 @app.route('/update_score', methods=['POST'])
 def update_score():
+
+
+    print(takenPins)
+    print(games)
 
     # TODO need to sort out the pusher here.. deffo tomoz job`
     body = request.json
