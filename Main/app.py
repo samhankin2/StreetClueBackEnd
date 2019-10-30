@@ -122,7 +122,7 @@ def delete_game():
 
     if not pin in games:
         return handleNotPinInGames(pin), 404
-
+    print("test2")
     del games[pin]
     takenPins.remove(pin)
     return "worked", 204
@@ -259,6 +259,7 @@ def update_score():
         channels_client.trigger(str(pin), 'endGame', {
             'message': game.scores})
         triggerEndRoundPusher(pin)
+        print("test1")
         del games[pin]
         takenPins.remove(pin)
         return endGameResponseHandler(game, "End of Game"), 200
