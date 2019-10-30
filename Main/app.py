@@ -301,14 +301,14 @@ def generateLocations(numberOfRounds):
     cur.close()
     jsonData = jsonify(data)
     locations = []
-    content = {}
+
     print(randoms)
     print(data[1])
     for i in randoms:
         print(i)
         content = [(data[i])[0], (data[i])[1]]
         locations.append(content)
-        content = {}
+        content = []
     print(locations)
     return locations
 
