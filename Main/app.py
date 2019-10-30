@@ -305,3 +305,6 @@ def generateLocations(numberOfRounds):
 
 def findGame(pin):
     return 0
+
+if __name__ == '__main__':
+    app.run()
