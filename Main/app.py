@@ -51,10 +51,10 @@ def index():
 # TODO Make sure the names are unique
 # TODO If you go back from waiting room removes you from the list
 channels_client = pusher.Pusher(
-    app_id='882302',
-    key='e997856aae5ff49795fd',
-    secret='ed6a44d2b024c45766d1',
-    cluster='eu',
+    app_id='890224',
+    key='0c067d9d3a75d2722d94',
+    secret='b67d9f6cf332e080ce36',
+    cluster='mt1',
     ssl=True
 )
 
