@@ -6,24 +6,40 @@ from flask import request, Response, jsonify, render_template
 import pusher
 from random import randrange, randint
 import random
-from flask_sqlalchemy import SQLAlchemy
-project_dir = os.path.dirname(os.path.abspath(__file__))
-database_file = "sqlite:///{}".format(
-    os.path.join(project_dir, "locationdatabase.db"))
+from mysqlconfig import config
+import json
+from flask_mysqldb import MySQL
 app = Flask(__name__)
 # ------------------------------------------
 # Just DB things...
-app.config["SQLALCHEMY_DATABASE_URI"] = database_file
-db = SQLAlchemy(app)
+
+print(config)
+
+app.config['MYSQL_HOST'] = config["mysql_host"]
+app.config['MYSQL_USER'] = config["mysql_user"]
+app.config['MYSQL_PASSWORD'] = config["mysql_password"]
+app.config['MYSQL_DB'] = config["mysql_db"]
+mysql = MySQL(app)
 
 
-class Locations(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    lat = db.Column(db.String(15), nullable=False)
-    lon = db.Column(db.String(15), nullable=False)
-
-    def __repr__(self):
-        return "{},{}".format(self.lat, self.lon)
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == "POST":
+        details = request.form
+        latitude = details['lat']
+        longitude = details['lon']
+        cur = mysql.connection.cursor()
+        cur.execute("INSERT INTO Coordinates(latitude, longitude) VALUES (%s, %s)", (latitude, longitude))
+        mysql.connection.commit()
+        cur.close()
+        return 'success'
+    if request.method == 'GET':
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT * FROM Coordinates")
+        data = cur.fetchall()
+        cur.close()
+        return jsonify(data)
+    return render_template('locations.html')
 
 
 # TODO Make sure the names are unique
@@ -117,7 +133,7 @@ def debug():
 
     print(takenPins)
     print(games)
-    locations = generateLocations(5)
+    locations = generateLocations(3)
     newGame = Game("9999", locations, 4)
     games["9999"] = newGame
     newPlayer = Player("test")
@@ -270,16 +286,22 @@ def generatePin():
 
 
 def generateLocations(numberOfRounds):
-    randoms = random.sample(range(132), numberOfRounds)
-    location1 = Locations.query.filter_by(id=randoms[0]+1).one()
-    location2 = Locations.query.filter_by(id=randoms[1]+1).one()
-    location3 = Locations.query.filter_by(id=randoms[2]+1).one()
-    location4 = Locations.query.filter_by(id=randoms[3]+1).one()
-    location5 = Locations.query.filter_by(id=randoms[4]+1).one()
-
-    locations = [[location1.lat, location1.lon], [location2.lat, location2.lon], [
-        location3.lat, location3.lon], [location4.lat, location4.lon], [location5.lat, location5.lon]]
-
+    randoms = random.sample(range(5), numberOfRounds)
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT * FROM Coordinates")
+    data = cur.fetchall()
+    cur.close()
+    jsonData = jsonify(data)
+    locations = []
+    content = {}
+    print(randoms)
+    print(data[1])
+    for i in randoms:
+        print(i)
+        content = [(data[i])[0], (data[i])[1]]
+        locations.append(content)
+        content = {}
+    print(locations)
     return locations
 
 
