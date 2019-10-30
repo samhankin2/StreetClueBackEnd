@@ -1,5 +1,5 @@
-from Game import Game
-from Player import Player
+from Main.Game import Game
+from Main.Player import Player
 import os
 from flask import Flask
 from flask import request, Response, jsonify, render_template
