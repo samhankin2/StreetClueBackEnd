@@ -194,6 +194,7 @@ def add_player():
     pin = body["pin"]
 
     if not pin in games:
+        print(games)
         return handleNotPinInGames(pin), 404
 
     games[pin].generatePlayerNamesArray()
@@ -241,6 +242,7 @@ def update_score():
 
 
     print(takenPins)
+    print("here")
     print(games)
 
     # TODO need to sort out the pusher here.. deffo tomoz job`
