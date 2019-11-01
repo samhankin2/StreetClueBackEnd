@@ -96,13 +96,13 @@ def next_round():
     pin = body["pin"]
     handlePinError = handleNotPinInGames(pin)
 
+    channels_client.trigger(str(pin), 'nextRound', {
+        'message': pin + "next round started"})
     if handlePinError[0] == True:
         return handlePinError[1]
 
 
 
-    channels_client.trigger(str(pin), 'nextRound', {
-        'message': pin + "next round started"})
 
     return "worked"
 
