@@ -92,14 +92,14 @@ def remove_player():
 @app.route("/next_round", methods=['POST'])
 def next_round():
 
-    handlePinError = handleNotPinInGames(123123)
+    body = request.json
+    pin = body["pin"]
+    handlePinError = handleNotPinInGames(pin)
 
     if handlePinError[0] == True:
         return handlePinError[1]
 
 
-    body = request.json
-    pin = body["pin"]
 
     channels_client.trigger(str(pin), 'nextRound', {
         'message': pin + "next round started"})
