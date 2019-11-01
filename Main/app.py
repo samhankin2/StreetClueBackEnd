@@ -312,6 +312,7 @@ def update_score():
         endGame = True
 
     if endRound and endGame:
+        triggerEndRoundPusher(pin)
 
         sql = 'SELECT players.name, players.total_score FROM players INNER JOIN games ON players.pin = games.pin WHERE games.pin = %s'
         cur.execute(sql, [pin])
@@ -326,7 +327,7 @@ def update_score():
         sql = "DELETE FROM games WHERE pin = %s"
         cur.execute(sql, [pin])
         mysql.connection.commit()
-        triggerEndRoundPusher(pin)
+        
 
         channels_client.trigger(str(pin), 'endGame', {
             'message': score})
