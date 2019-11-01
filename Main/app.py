@@ -33,32 +33,32 @@ mysql = MySQL(app)
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == "POST":
-        details = request.form
-        latitude = details['lat']
-        longitude = details['lon']
+        body = request.json
+        pin = body["pin"]
+        name = body["name"]
+
         cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO coordinates(latitude, longitude) VALUES (%s, %s)", (latitude, longitude))
+        cur.execute(
+            "INSERT INTO players(latitude, longitude) VALUES (%s, %s)", (latitude, longitude))
         mysql.connection.commit()
         cur.close()
         return 'success'
     if request.method == 'GET':
         cur = mysql.connection.cursor()
-        cur.execute("SELECT * FROM Coordinates")
+        sql = 'SELECT players.name, players.total_score FROM players INNER JOIN games ON players.pin = games.pin WHERE games.pin = %s'
+        cur.execute(sql, [3090])
         data = cur.fetchall()
-        cur.close()
-        return jsonify(data)
+        print(data)
+        score = {}
+
+        for row in data:
+
+            score[row[0]] = row[1]
+
+        print(score)
+
+        return jsonify(score)
     return render_template('locations.html')
-
-
-# TODO IF YOU GO BACK IT WILL DELETE THE GAME
-# TODO If you go back from waiting room removes you from the list
-# TODO sort of the request types from post to patch etc (maybe)
-# TODO make amount of rounds customisable
-# TODO handle multiple pins:
-    # send to the server the guessed locations
-    # store that in an array
-    # send back at map result
-    # push back any further additions
 
 
 channels_client = pusher.Pusher(
@@ -69,31 +69,19 @@ channels_client = pusher.Pusher(
     ssl=True
 )
 
-locations = [[-37.2236053, 145.929006],
-             [-42.7111515, 146.8972924],
-             [51.5024273, -0.139319],
-             [-44.5667837, 170.198597],
-             [-38.6770894, 176.07472470]]
-
-takenPins = []
-
-games = {}
-
 
 @app.route("/remove_player", methods=['POST'])
 def remove_player():
     body = request.json
     pin = body["pin"]
     name = body["name"]
+    player_id = body["player_id"]
 
-    game = games[pin]
-
-    count = 0
-    for person in game.arrayOfPlayers:
-        if person.name == name:
-            del game.arrayOfPlayers[count]
-            game.generatePlayerNamesArray()
-        count += 1
+    cur = mysql.connection.cursor()
+    sql = "DELETE FROM players WHERE player_id = %s"
+    cur.execute(sql, [player_id])
+    mysql.connection.commit()
+    cur.close()
 
     channels_client.trigger(str(pin), 'playerLeave', {
                             'message': name + " Has left", "name": name})
@@ -101,89 +89,88 @@ def remove_player():
     return "asdasd", 204
 
 
-@app.route("/next_round", methods=['POST'])
-def next_round():
+# @app.route("/next_round", methods=['POST'])
+# def next_round():
 
-    body = request.json
-    pin = body["pin"]
+#     body = request.json
+#     pin = body["pin"]
 
-    channels_client.trigger(str(pin), 'nextRound', {
-        'message': pin + "next round started"})
+#     channels_client.trigger(str(pin), 'nextRound', {
+#         'message': pin + "next round started"})
 
-    return "worked"
-
-
-# this shouldnt be used
-@app.route("/delete_game", methods=['POST'])
-def delete_game():
-
-    body = request.json
-    pin = body["pin"]
-
-    if not pin in games:
-        return handleNotPinInGames(pin), 404
-    print("test2")
-    del games[pin]
-    takenPins.remove(pin)
-    return "worked", 204
+#     return "worked"
 
 
-@app.route('/create_game', methods=['GET'])
+# # this shouldnt be used
+# @app.route("/delete_game", methods=['POST'])
+# def delete_game():
+
+#     body = request.json
+#     pin = body["pin"]
+
+#     if not pin in games:
+#         return handleNotPinInGames(pin), 404
+#     print("test2")
+#     del games[pin]
+#     takenPins.remove(pin)
+#     return "worked", 204
+
+
+@app.route('/create_game', methods=['GET', 'POST'])
 def create_game():
 
-    if len(takenPins) == 10000:
-        return Response("{'msg': 'No Available Pins'}", status=400, mimetype='application/json')
+    # if len(takenPins) == 10000:
+    #     return Response("{'msg': 'No Available Pins'}", status=400, mimetype='application/json')
 
     pin = generatePin()
-    while pin in takenPins:
-        pin = generatePin()
 
-    takenPins.append(pin)
-    print(takenPins)
+    # TODO fix this
+    # while pin in takenPins:
+    #     pin = generatePin()
+    location_id = randint(1, 20)
+    sql = "INSERT INTO games (pin, total_rounds, current_round, player_count, locations_id, started, answer_count) VALUES (%s, 3,0,0,%s,0,0)"
+    cur = mysql.connection.cursor()
 
-    locations = generateLocations(5)
+    cur.execute(sql, [pin, location_id])
+    mysql.connection.commit()
 
-    newGame = Game(pin, locations, 4)
-
-    games[pin] = newGame
     response = {"msg": "Created game sucessfully", "pin": pin}
     json = jsonify(response)
     return json, 201
 
 
-@app.route('/test', methods=['GET', 'POST'])
-def debug():
-    # print(games)
-    # for i in games:
-    #     print(games[i].pin)
-    #     print(games[i].arrayOfPlayers)
-    #     print(games[i].scores)
+# @app.route('/test', methods=['GET', 'POST'])
+# def debug():
+#     # print(games)
+#     # for i in games:
+#     #     print(games[i].pin)
+#     #     print(games[i].arrayOfPlayers)
+#     #     print(games[i].scores)
 
-    # # print(availablePins)
-    # # print(takenPins)
+#     # # print(availablePins)
+#     # # print(takenPins)
 
-    print(takenPins)
-    print(games)
+#     print(takenPins)
+#     print(games)
 
-    # locations = generateLocations(5)
-    newGame = Game("9999", locations, 4)
-    games["9999"] = newGame
-    newPlayer = Player("test")
-    newPlayer2 = Player("hello")
-    games["9999"].addPlayer(newPlayer)
-    games["9999"].addPlayer(newPlayer2)
+#     # locations = generateLocations(5)
+#     newGame = Game("9999", locations, 4)
+#     games["9999"] = newGame
+#     newPlayer = Player("test")
+#     newPlayer2 = Player("hello")
+#     games["9999"].addPlayer(newPlayer)
+#     games["9999"].addPlayer(newPlayer2)
 
+#     takenPins.append("9999")
 
-    takenPins.append("9999")
+#     # # print(games["9999"].arrayOfPlayers)
 
-    # # print(games["9999"].arrayOfPlayers)
+#     # # channels_client.trigger("test", 'endGame', {
+#     # #     'message': "asafs"})
 
-    # # channels_client.trigger("test", 'endGame', {
-    # #     'message': "asafs"})
+#     # return "hi!"
 
-    # return "hi!"
-
-    return " hi "
+#     return " hi "
 
 
 @app.route('/add_player', methods=['POST'])
@@ -193,29 +180,53 @@ def add_player():
     playername = body["name"]
     pin = body["pin"]
 
-    if not pin in games:
-        print(games)
-        return handleNotPinInGames(pin), 404
-
-    games[pin].generatePlayerNamesArray()
-
-    if games[pin].started == True:
+    cur = mysql.connection.cursor()
+    sql = "SELECT started, locations_id FROM games WHERE pin = %s"
+    cur.execute(sql, [pin])
+    data = cur.fetchone()
+    if data[0] == 1:
         response = {"msg": pin + " has already started"}
         json = jsonify(response)
         return json, 400
 
-    if playername in games[pin].arrayOfPlayerNames and len(games[pin].arrayOfPlayers) > 0:
-        response = {"msg": playername + " is already taken"}
-        json = jsonify(response)
-        return json, 400
+    params = (playername, str(pin))
+    sql = "INSERT INTO players (name, current_score, total_score, pin) VALUES(%s, 0, 0,%s)"
+    cur.execute(sql, params)
 
-    newPlayer = Player(playername)
-    games[pin].addPlayer(newPlayer)
+    sql = "UPDATE games SET player_count = player_count+1 WHERE pin = %s "
+    cur.execute(sql, [pin])
+    mysql.connection.commit()
+
+    sql = "SELECT LAST_INSERT_ID();"
+    cur.execute(sql)
+    id = cur.fetchone()
+    print(id[0])
+
+    sql = "SELECT * FROM locations where locations_id = %s"
+    location_id = data[1]
+
+    cur.execute(sql, [location_id])
+    data = cur.fetchone()
+
+    location = data[1].split(",")
+
+    location[0] = float(location[0])
+    location[1] = float(location[1])
+
+    print(location)
+
+    cur.close()
+
+    # if playername in games[pin].arrayOfPlayerNames and len(games[pin].arrayOfPlayers) > 0:
+    #     response = {"msg": playername + " is already taken"}
+    #     json = jsonify(response)
+    #     return json, 400
+
     channels_client.trigger(str(pin), 'playerJoin', {
                             'message': playername + " Has Joined", "name": playername})
 
     response = {"msg": "Added "+playername+" Successfully",
-                "locations": games[pin].randomLocations[0]}
+                "locations": location, "player_id": id[0]}
     json = jsonify(response)
     return json, 201
 
@@ -226,10 +237,12 @@ def start_game():
 
     pin = body["pin"]
 
-    if not pin in games:
-        return handleNotPinInGames(pin), 404
+    cur = mysql.connection.cursor()
+    sql = "UPDATE games SET started = TRUE WHERE pin = %s"
+    cur.execute(sql, [pin])
+    mysql.connection.commit()
+    cur.close()
 
-    games[pin].startGame()
     channels_client.trigger(str(pin), 'startGame', {
                             'message': 'game ' + pin + ' has started'})
     response = {"msg": "started game sucessfully", "pin": pin}
@@ -240,48 +253,188 @@ def start_game():
 @app.route('/update_score', methods=['POST'])
 def update_score():
 
-
-    print(takenPins)
-    print("here")
-    print(games)
-
-    # TODO need to sort out the pusher here.. deffo tomoz job`
     body = request.json
     playername = body["name"]
     pin = body["pin"]
     score = body["score"]
+    player_id = body["player_id"]
 
-    if not pin in games:
-        return handleNotPinInGames(pin), 404
+    # if not pin in games:
+    #     return handleNotPinInGames(pin), 404
 
-    game = games[pin]
-    game.updateScores(playername, score)
+    cur = mysql.connection.cursor()
 
-    if game.isEndRound() and game.isEndGame():
+    sql = "UPDATE games SET answer_count=answer_count+1 WHERE pin = %s"
+    cur.execute(sql, [pin])
+
+    sql = "UPDATE players SET total_score=total_score+%s, current_score=%s WHERE player_id=%s"
+    cur.execute(sql, [score, score, player_id])
+
+    mysql.connection.commit()
+
+    sql = "SELECT player_count, answer_count, current_round FROM games WHERE pin = %s"
+    cur.execute(sql, [pin])
+    data = cur.fetchone()
+
+    playerCount = data[0]
+    answerCount = data[1]
+    currentRound = data[2]
+
+    endRound = False
+    endGame = False
+
+    print(playerCount)
+    print(answerCount)
+
+    if playerCount == answerCount:
+        endRound = True
+
+    if currentRound == 2:
+        endGame = True
+
+    if endRound and endGame:
+
+        sql = 'SELECT players.name, players.total_score FROM players INNER JOIN games ON players.pin = games.pin WHERE games.pin = %s'
+        cur.execute(sql, [pin])
+        data = cur.fetchall()
+
+        score = {}
+
+        for row in data:
+            score[row[0]] = row[1]
+
+        # ON DELETE CASCADE IN THE SCHEMA
+        sql = "DELETE FROM games WHERE pin = %s"
+        cur.execute(sql, [pin])
+
         channels_client.trigger(str(pin), 'endGame', {
-            'message': game.scores})
+            'message': jsonify(score)})
         triggerEndRoundPusher(pin)
-        print("test1")
-        del games[pin]
-        takenPins.remove(pin)
-        return endGameResponseHandler(game, "End of Game"), 200
 
-    if game.isEndRound() and not game.isEndGame():
+        response = {"msg": "End of Game",
+                    "scores": score, "nextRound": "3", "locations": [0, 0], "endGame": True}
 
+        mysql.connection.commit()
+
+        return jsonify(response), 200
+
+    if endRound and not endGame:
         triggerEndRoundPusher(pin)
         print("end of round and not end of game")
-        response = answerSubmittedHandler(game, "End of Round")
-        game.answerCount = 0
-        game.nextRound()
-        return response, 200
 
-    if not game.isEndRound() and game.isEndGame():
-        print("not end of round and end of game")
-        return endGameResponseHandler(game, "Go To Leaderboard screen next"), 200
+        sql = "UPDATE games SET answer_count=0, current_round=current_round+1 WHERE pin=%s"
+        cur.execute(sql, [pin])
 
-    if not game.isEndRound() and not game.isEndGame():
+        mysql.connection.commit()
+
+        sql = 'SELECT players.name, players.total_score, games.current_round, games.locations_id FROM players INNER JOIN games ON players.pin = games.pin WHERE games.pin = %s'
+        cur.execute(sql, [pin])
+        data = cur.fetchall()
+
+        score = {}
+
+        for row in data:
+            score[row[0]] = row[1]
+        print(data)
+        location_id = data[0][3]
+        currentRound = data[0][2]
+
+        sql = "SELECT location" + \
+            str(currentRound)+" FROM locations WHERE locations_id = %s"
+
+        cur.execute(sql, [location_id])
+        data = cur.fetchone()
+
+        print(data)
+
+        location = data[0].split(",")
+
+        location[0] = float(location[0])
+        location[1] = float(location[1])
+
+        response = {"msg": "End of Round",
+                    "scores": score, "nextRound": currentRound, "locations": location, "endGame": False}
+
+        return jsonify(response), 200
+
+    if not endRound and endGame:
+        print("not end of game but is end game")
+
+        sql = 'SELECT players.name, players.total_score, games.current_round, games.locations_id FROM players INNER JOIN games ON players.pin = games.pin WHERE games.pin = %s'
+        cur.execute(sql, [pin])
+        data = cur.fetchall()
+
+        score = {}
+
+        for row in data:
+            score[row[0]] = row[1]
+
+        response = {"msg": "Go to leaderboard screen",
+                    "scores": score, "nextRound": 3, "locations": [0, 0], "endGame": True}
+        json = jsonify(response)
+        return json
+
+    if not endRound and not endGame:
         print("not end of game and not end of round")
-        return answerSubmittedHandler(game, "Answer Submitted"), 200
+
+        sql = 'SELECT players.name, players.total_score, games.current_round, games.locations_id FROM players INNER JOIN games ON players.pin = games.pin WHERE games.pin = %s'
+        cur.execute(sql, [pin])
+        data = cur.fetchall()
+
+        score = {}
+
+        for row in data:
+            score[row[0]] = row[1]
+        print(data)
+        location_id = data[0][3]
+        currentRound = data[0][2]
+
+        sql = "SELECT location" + \
+            str(currentRound+1)+" FROM locations WHERE locations_id = %s"
+
+        cur.execute(sql, [location_id])
+        data = cur.fetchone()
+
+        print(data)
+
+        location = data[0].split(",")
+
+        location[0] = float(location[0])
+        location[1] = float(location[1])
+
+        response = {"msg": "Answer Submitted",
+                    "scores": score, "nextRound": currentRound, "locations": location, "endGame": False}
+
+        json = jsonify(response)
+        return json
+
+    return "sefseg", 200
+
+#    if game.isEndRound() and game.isEndGame():
+#         channels_client.trigger(str(pin), 'endGame', {
+#             'message': game.scores})
+#         triggerEndRoundPusher(pin)
+#         print("test1")
+#         del games[pin]
+#         takenPins.remove(pin)
+#         return endGameResponseHandler(game, "End of Game"), 200
+
+#     if game.isEndRound() and not game.isEndGame():
+
+#         triggerEndRoundPusher(pin)
+#         print("end of round and not end of game")
+#         response = answerSubmittedHandler(game, "End of Round")
+#         game.answerCount = 0
+#         game.nextRound()
+#         return response, 200
+
+#     if not game.isEndRound() and game.isEndGame():
+#         print("not end of round and end of game")
+#         return endGameResponseHandler(game, "Go To Leaderboard screen next"), 200
+
+#     if not game.isEndRound() and not game.isEndGame():
+#         print("not end of game and not end of round")
+#         return answerSubmittedHandler(game, "Answer Submitted"), 200
 
 
 @app.route('/get_players', methods=['POST'])
@@ -289,13 +442,23 @@ def get_players():
     body = request.json
     pin = body["pin"]
 
-    if not pin in games:
-        return handleNotPinInGames(pin), 404
-    game = games[pin]
-    game.generatePlayerNamesArray()
+    # if not pin in games:
+    #     return handleNotPinInGames(pin), 404
+
+    cur = mysql.connection.cursor()
+
+    sql = "SELECT name FROM players WHERE pin = %s "
+    cur.execute(sql, [pin])
+
+    data = cur.fetchall()
+    print(data)
+    arrayOfPlayers = []
+
+    for rows in data:
+        arrayOfPlayers.append(rows[0])
 
     response = {
-        "players": game.arrayOfPlayerNames}
+        "players": arrayOfPlayers}
     json = jsonify(response)
     return json, 200
 
@@ -305,25 +468,24 @@ def generatePin():
     return pin
 
 
-def generateLocations(numberOfRounds):
-    randoms = random.sample(range(5), numberOfRounds)
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT * FROM Coordinates")
-    data = cur.fetchall()
-    cur.close()
-    jsonData = jsonify(data)
-    locations = []
+# def generateLocations(numberOfRounds):
+#     randoms = random.sample(range(5), numberOfRounds)
+#     cur = mysql.connection.cursor()
+#     cur.execute("SELECT * FROM Coordinates")
+#     data = cur.fetchall()
+#     cur.close()
+#     jsonData = jsonify(data)
+#     locations = []
 
-    print(randoms)
-    print(data[1])
-    for i in randoms:
-        print(i)
-        content = [(data[i])[1], (data[i])[2]]
-        locations.append(content)
-        content = []
-    print(locations)
-    return locations
-
+#     print(randoms)
+#     print(data[1])
+#     for i in randoms:
+#         print(i)
+#         content = [(data[i])[1], (data[i])[2]]
+#         locations.append(content)
+#         content = []
+#     print(locations)
+#     return locations
 
 
 def triggerEndRoundPusher(pin):
@@ -331,27 +493,29 @@ def triggerEndRoundPusher(pin):
         'message': "test"})
 
 
-def endGameResponseHandler(game, msg):
-    response = {"msg": msg,
-                "scores": game.scores, "nextRound": "none", "locations": [0, 0], "endGame": True}
-    json = jsonify(response)
-    return json
+# def endGameResponseHandler(game, msg):
+#     response = {"msg": msg,
+#                 "scores": game.scores, "nextRound": "none", "locations": [0, 0], "endGame": True}
+#     json = jsonify(response)
+#     return json
 
 
-def answerSubmittedHandler(game, msg):
-    response = {"msg": msg,
-                "scores": game.scores, "nextRound": game.round+1, "locations": game.randomLocations[game.round+1], "endGame": False}
-    json = jsonify(response)
-    return json
+# def answerSubmittedHandler(game, msg):
+#     response = {"msg": msg,
+#                 "scores": game.scores, "nextRound": game.round+1, "locations": game.randomLocations[game.round+1], "endGame": False}
+#     json = jsonify(response)
+#     return json
 
 
-def handleNotPinInGames(pin):
-    response = {"msg": pin + " Doesnt Exists"}
-    json = jsonify(response)
-    return json
+# def handleNotPinInGames(pin):
+#     response = {"msg": pin + " Doesnt Exists"}
+#     json = jsonify(response)
+#     return json
 
-def findGame(pin):
-    return 0
+
+# def findGame(pin):
+#     return 0
+
 
 if __name__ == '__main__':
     app.run()
