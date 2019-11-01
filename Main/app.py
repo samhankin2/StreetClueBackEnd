@@ -326,10 +326,10 @@ def update_score():
         sql = "DELETE FROM games WHERE pin = %s"
         cur.execute(sql, [pin])
         mysql.connection.commit()
+        triggerEndRoundPusher(pin)
 
         channels_client.trigger(str(pin), 'endGame', {
             'message': score})
-        triggerEndRoundPusher(pin)
 
         response = {"msg": "End of Game",
                     "scores": score, "nextRound": "3", "locations": [0, 0], "endGame": True}
