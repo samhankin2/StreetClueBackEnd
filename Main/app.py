@@ -89,8 +89,14 @@ def remove_player():
     return "asdasd", 204
 
 
-# @app.route("/next_round", methods=['POST'])
-# def next_round():
+@app.route("/next_round", methods=['POST'])
+def next_round():
+
+    handlePinError = handleNotPinInGames(123123)
+
+    if handlePinError[0] == True:
+        return handlePinError[1]
+
 
 #     body = request.json
 #     pin = body["pin"]
@@ -179,6 +185,12 @@ def add_player():
     body = request.json
     playername = body["name"]
     pin = body["pin"]
+    handlePinError = handleNotPinInGames(pin)
+
+    print(handlePinError[0])
+
+    if handlePinError[0] == True:
+        return handlePinError[1]
 
     cur = mysql.connection.cursor()
     sql = "SELECT started, locations_id FROM games WHERE pin = %s"
@@ -237,6 +249,11 @@ def start_game():
 
     pin = body["pin"]
 
+    handlePinError = handleNotPinInGames(pin)
+
+    if handlePinError[0] == True:
+        return handlePinError[1]
+
     cur = mysql.connection.cursor()
     sql = "UPDATE games SET started = TRUE WHERE pin = %s"
     cur.execute(sql, [pin])
@@ -259,8 +276,10 @@ def update_score():
     score = body["score"]
     player_id = body["player_id"]
 
-    # if not pin in games:
-    #     return handleNotPinInGames(pin), 404
+    handlePinError = handleNotPinInGames(pin)
+
+    if handlePinError[0] == True:
+        return handlePinError[1]
 
     cur = mysql.connection.cursor()
 
@@ -306,15 +325,14 @@ def update_score():
         # ON DELETE CASCADE IN THE SCHEMA
         sql = "DELETE FROM games WHERE pin = %s"
         cur.execute(sql, [pin])
+        mysql.connection.commit()
 
         channels_client.trigger(str(pin), 'endGame', {
-            'message': jsonify(score)})
+            'message': score})
         triggerEndRoundPusher(pin)
 
         response = {"msg": "End of Game",
                     "scores": score, "nextRound": "3", "locations": [0, 0], "endGame": True}
-
-        mysql.connection.commit()
 
         return jsonify(response), 200
 
@@ -408,33 +426,7 @@ def update_score():
         json = jsonify(response)
         return json
 
-    return "sefseg", 200
-
-#    if game.isEndRound() and game.isEndGame():
-#         channels_client.trigger(str(pin), 'endGame', {
-#             'message': game.scores})
-#         triggerEndRoundPusher(pin)
-#         print("test1")
-#         del games[pin]
-#         takenPins.remove(pin)
-#         return endGameResponseHandler(game, "End of Game"), 200
-
-#     if game.isEndRound() and not game.isEndGame():
-
-#         triggerEndRoundPusher(pin)
-#         print("end of round and not end of game")
-#         response = answerSubmittedHandler(game, "End of Round")
-#         game.answerCount = 0
-#         game.nextRound()
-#         return response, 200
-
-#     if not game.isEndRound() and game.isEndGame():
-#         print("not end of round and end of game")
-#         return endGameResponseHandler(game, "Go To Leaderboard screen next"), 200
-
-#     if not game.isEndRound() and not game.isEndGame():
-#         print("not end of game and not end of round")
-#         return answerSubmittedHandler(game, "Answer Submitted"), 200
+    return "Error", 400
 
 
 @app.route('/get_players', methods=['POST'])
@@ -442,8 +434,10 @@ def get_players():
     body = request.json
     pin = body["pin"]
 
-    # if not pin in games:
-    #     return handleNotPinInGames(pin), 404
+    handlePinError = handleNotPinInGames(pin)
+
+    if handlePinError[0] == True:
+        return handlePinError[1]
 
     cur = mysql.connection.cursor()
 
@@ -507,15 +501,24 @@ def triggerEndRoundPusher(pin):
 #     return json
 
 
-# def handleNotPinInGames(pin):
-#     response = {"msg": pin + " Doesnt Exists"}
-#     json = jsonify(response)
-#     return json
+def handleNotPinInGames(pin):
+
+    cur = mysql.connection.cursor()
+    sql = "SELECT COUNT(1) FROM games WHERE pin = %s"
+    cur.execute(sql, [str(pin)])
+
+    data = cur.fetchone()
+
+    if data[0] == 0:
+        response = {"msg": "Pin Doesnt Exists"}
+        json = jsonify(response)
+        return [True, json]
+
+    else:
+        return [False]
 
 
 # def findGame(pin):
 #     return 0
-
-
 if __name__ == '__main__':
     app.run()
