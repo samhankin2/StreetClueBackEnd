@@ -98,13 +98,13 @@ def next_round():
         return handlePinError[1]
 
 
-#     body = request.json
-#     pin = body["pin"]
+    body = request.json
+    pin = body["pin"]
 
-#     channels_client.trigger(str(pin), 'nextRound', {
-#         'message': pin + "next round started"})
+    channels_client.trigger(str(pin), 'nextRound', {
+        'message': pin + "next round started"})
 
-#     return "worked"
+    return "worked"
 
 
 # # this shouldnt be used
